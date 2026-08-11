@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Employee Management System</title>
+  <meta name="description" content="A modern dashboard to manage employee lifecycle — register, update, allocate departments, and terminate employees."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d0f1a;
+      --surface:   #141728;
+      --card:      #1a1f35;
+      --border:    #252b45;
+      --accent:    #6c63ff;
+      --accent2:   #00d2ff;
+      --danger:    #ff4d6d;
+      --success:   #00e5a0;
+      --warning:   #ffb347;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --radius:    14px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* ── Sidebar ── */
+    aside {
+      width: 240px;
+      min-height: 100vh;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 28px 16px;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 36px;
+      padding: 0 8px;
+    }
+
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+
+    .logo-text { font-size: 15px; font-weight: 700; letter-spacing: 0.3px; }
+    .logo-sub  { font-size: 10px; color: var(--muted); }
+
+    nav a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 14px;
+      border-radius: 10px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 4px;
+      transition: all .2s;
+      cursor: pointer;
+    }
+
+    nav a:hover, nav a.active {
+      background: rgba(108,99,255,.15);
+      color: var(--text);
+    }
+    nav a.active { color: var(--accent); }
+    nav a span.icon { font-size: 17px; }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: rgba(108,99,255,.08);
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .api-dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      margin-right: 6px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50%      { opacity: .4; }
+    }
+
+    /* ── Main ── */
+    main {
+      margin-left: 240px;
+      flex: 1;
+      padding: 32px;
+      min-height: 100vh;
+    }
+
+    .page { display: none; }
+    .page.active { display: block; animation: fadeIn .3s ease; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+    h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+    .subtitle { color: var(--muted); font-size: 14px; margin-bottom: 28px; }
+
+    /* ── Stat Cards ── */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: transform .2s;
+    }
+    .stat-card:hover { transform: translateY(-3px); }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, var(--glow,.3) 0%, transparent 70%);
+      opacity: .06;
+      pointer-events: none;
+    }
+    .stat-label { font-size: 12px; color: var(--muted); margin-bottom: 8px; font-weight: 500; text-transform: uppercase; letter-spacing: .8px; }
+    .stat-value { font-size: 32px; font-weight: 700; }
+    .stat-icon  { position: absolute; right: 16px; top: 16px; font-size: 28px; opacity: .3; }
+
+    /* ── Table ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .card-title { font-size: 16px; font-weight: 600; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      color: var(--muted);
+      padding: 14px 22px;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 14px 22px;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(255,255,255,.03);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.025); }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    .badge-active     { background: rgba(0,229,160,.15); color: var(--success); }
+    .badge-inactive   { background: rgba(255,179,71,.15); color: var(--warning); }
+    .badge-terminated { background: rgba(255,77,109,.15); color: var(--danger); }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 18px;
+      border-radius: 9px;
+      border: none;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all .2s;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #7c74ff; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(108,99,255,.4); }
+    .btn-danger  { background: rgba(255,77,109,.15); color: var(--danger); border: 1px solid rgba(255,77,109,.3); }
+    .btn-danger:hover { background: rgba(255,77,109,.3); }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-ghost:hover { color: var(--text); border-color: var(--accent); }
+
+    .action-btns { display: flex; gap: 6px; }
+
+    /* ── Forms ── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 13px; font-weight: 500; color: var(--muted); }
+    .form-group input, .form-group select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      transition: border-color .2s;
+      outline: none;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+    .form-group.full { grid-column: 1 / -1; }
+
+    .form-actions { display: flex; gap: 10px; margin-top: 8px; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.6);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 32px;
+      width: 540px;
+      max-width: 95vw;
+      max-height: 90vh;
+      overflow-y: auto;
+      animation: modalIn .25s ease;
+    }
+    @keyframes modalIn { from { opacity:0; transform:scale(.95) translateY(20px); } to { opacity:1; transform:scale(1) translateY(0); } }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .modal-title { font-size: 18px; font-weight: 700; }
+    .close-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 22px; line-height:1; }
+    .close-btn:hover { color: var(--text); }
+
+    /* ── Toast ── */
+    #toast-container {
+      position: fixed;
+      bottom: 24px; right: 24px;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .toast {
+      padding: 14px 20px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: slideUp .3s ease;
+      min-width: 260px;
+    }
+    @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+    .toast-success { background: rgba(0,229,160,.15); border: 1px solid rgba(0,229,160,.3); color: var(--success); }
+    .toast-error   { background: rgba(255,77,109,.15); border: 1px solid rgba(255,77,109,.3); color: var(--danger); }
+
+    /* ── Search / filter ── */
+    .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; }
+    .search-box {
+      flex: 1;
+      min-width: 220px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 9px 14px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      outline: none;
+    }
+    .search-box:focus { border-color: var(--accent); }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--muted);
+    }
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; opacity: .4; }
+    .empty-state p { font-size: 15px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      aside { width: 60px; padding: 16px 8px; }
+      .logo-text, .logo-sub, nav a span:not(.icon) { display: none; }
+      main { margin-left: 60px; padding: 20px; }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════ SIDEBAR ═══════════ -->
+<aside>
+  <div class="logo">
+    <div class="logo-icon">👥</div>
+    <div>
+      <div class="logo-text">EmpManager</div>
+      <div class="logo-sub">v1.0.0</div>
+    </div>
+  </div>
+
+  <nav>
+    <a id="nav-dashboard" class="active" onclick="showPage('dashboard')">
+      <span class="icon">📊</span><span>Dashboard</span>
+    </a>
+    <a id="nav-employees" onclick="showPage('employees')">
+      <span class="icon">👤</span><span>Employees</span>
+    </a>
+    <a id="nav-departments" onclick="showPage('departments')">
+      <span class="icon">🏢</span><span>Departments</span>
+    </a>
+    <a id="nav-register" onclick="showPage('register')">
+      <span class="icon">➕</span><span>Register Employee</span>
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <span class="api-dot"></span>API: localhost:8081
+  </div>
+</aside>
+
+<!-- ═══════════ MAIN ═══════════ -->
+<main>
+
+  <!-- DASHBOARD -->
+  <div id="page-dashboard" class="page active">
+    <h1>Dashboard</h1>
+    <p class="subtitle">Overview of your workforce at a glance.</p>
+
+    <div class="stats">
+      <div class="stat-card" style="--glow: var(--accent);">
+        <div class="stat-label">Total Employees</div>
+        <div class="stat-value" id="stat-total">—</div>
+        <div class="stat-icon">👥</div>
+      </div>
+      <div class="stat-card" style="--glow: var(--success);">
+        <div class="stat-label">Active</div>
+        <div class="stat-value" id="stat-active">—</div>
+        <div class="stat-icon">✅</div>
+      </div>
+      <div class="stat-card" style="--glow: var(--danger);">
+        <div class="stat-label">Terminated</div>
+        <div class="stat-value" id="stat-terminated">—</div>
+        <div class="stat-icon">🚫</div>
+      </div>
+      <div class="stat-card" style="--glow: var(--accent2);">
+        <div class="stat-label">Departments</div>
+        <div class="stat-value" id="stat-depts">—</div>
+        <div class="stat-icon">🏢</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Recent Employees</span>
+        <button class="btn btn-ghost btn-sm" onclick="showPage('employees')">View All →</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th><th>Job Title</th><th>Email</th><th>Department</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="dashboard-table">
+          <tr><td colspan="5"><div class="empty-state"><div class="icon">⏳</div><p>Loading...</p></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- EMPLOYEES -->
+  <div id="page-employees" class="page">
+    <h1>Employees</h1>
+    <p class="subtitle">View, update, and manage all employees.</p>
+
+    <div class="toolbar">
+      <input class="search-box" id="emp-search" placeholder="🔍  Search by name or email…" oninput="filterEmployees()"/>
+      <select id="emp-status-filter" class="search-box" style="flex:0;min-width:160px;" onchange="filterEmployees()">
+        <option value="">All Statuses</option>
+        <option>ACTIVE</option><option>INACTIVE</option><option>TERMINATED</option>
+      </select>
+      <button class="btn btn-primary" onclick="showPage('register')">+ Register Employee</button>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Name</th><th>Email</th><th>Job Title</th><th>Salary</th><th>Department</th><th>Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="employees-table">
+          <tr><td colspan="8"><div class="empty-state"><div class="icon">⏳</div><p>Loading...</p></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- DEPARTMENTS -->
+  <div id="page-departments" class="page">
+    <h1>Departments</h1>
+    <p class="subtitle">Create and manage company departments.</p>
+
+    <div class="toolbar">
+      <input class="search-box" id="dept-search" placeholder="🔍  Search departments…" oninput="filterDepts()"/>
+      <button class="btn btn-primary" onclick="openCreateDeptModal()">+ New Department</button>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr><th>ID</th><th>Name</th><th>Code</th><th>Employees</th></tr>
+        </thead>
+        <tbody id="departments-table">
+          <tr><td colspan="4"><div class="empty-state"><div class="icon">⏳</div><p>Loading...</p></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- REGISTER EMPLOYEE -->
+  <div id="page-register" class="page">
+    <h1>Register Employee</h1>
+    <p class="subtitle">Fill in the details to onboard a new employee.</p>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">Employee Information</span></div>
+      <div style="padding:28px;">
+        <form id="register-form" onsubmit="registerEmployee(event)">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>First Name *</label>
+              <input id="r-firstName" type="text" required placeholder="Alice"/>
+            </div>
+            <div class="form-group">
+              <label>Last Name *</label>
+              <input id="r-lastName" type="text" required placeholder="Smith"/>
+            </div>
+            <div class="form-group full">
+              <label>Email *</label>
+              <input id="r-email" type="email" required placeholder="alice@example.com"/>
+            </div>
+            <div class="form-group">
+              <label>Phone Number</label>
+              <input id="r-phone" type="text" placeholder="9876543210"/>
+            </div>
+            <div class="form-group">
+              <label>Hire Date *</label>
+              <input id="r-hireDate" type="date" required/>
+            </div>
+            <div class="form-group">
+              <label>Job Title *</label>
+              <input id="r-jobTitle" type="text" required placeholder="Software Engineer"/>
+            </div>
+            <div class="form-group">
+              <label>Salary *</label>
+              <input id="r-salary" type="number" min="1" step="0.01" required placeholder="75000"/>
+            </div>
+            <div class="form-group">
+              <label>Department (optional)</label>
+              <select id="r-department">
+                <option value="">— None —</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="submit">✅ Register Employee</button>
+            <button class="btn btn-ghost" type="reset">Reset</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ═══════════ MODALS ═══════════ -->
+
+<!-- Edit Employee -->
+<div class="modal-overlay" id="modal-edit">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Edit Employee</span>
+      <button class="close-btn" onclick="closeModal('modal-edit')">✕</button>
+    </div>
+    <form onsubmit="submitEdit(event)">
+      <div class="form-grid">
+        <div class="form-group"><label>First Name</label><input id="e-firstName" type="text" required/></div>
+        <div class="form-group"><label>Last Name</label><input id="e-lastName" type="text" required/></div>
+        <div class="form-group full"><label>Email</label><input id="e-email" type="email" required/></div>
+        <div class="form-group"><label>Phone</label><input id="e-phone" type="text"/></div>
+        <div class="form-group"><label>Hire Date</label><input id="e-hireDate" type="date" required/></div>
+        <div class="form-group"><label>Job Title</label><input id="e-jobTitle" type="text" required/></div>
+        <div class="form-group"><label>Salary</label><input id="e-salary" type="number" min="1" step="0.01" required/></div>
+        <div class="form-group"><label>Status</label>
+          <select id="e-status">
+            <option>ACTIVE</option><option>INACTIVE</option><option>TERMINATED</option>
+          </select>
+        </div>
+        <div class="form-group full"><label>Department</label>
+          <select id="e-department"><option value="">— None —</option></select>
+        </div>
+      </div>
+      <div class="form-actions" style="margin-top:20px;">
+        <button class="btn btn-primary" type="submit">💾 Save Changes</button>
+        <button class="btn btn-ghost" type="button" onclick="closeModal('modal-edit')">Cancel</button>
+      </div>
+    </form>
+    <input type="hidden" id="e-id"/>
+  </div>
+</div>
+
+<!-- Allocate Department -->
+<div class="modal-overlay" id="modal-allocate">
+  <div class="modal" style="width:380px;">
+    <div class="modal-header">
+      <span class="modal-title">Allocate Department</span>
+      <button class="close-btn" onclick="closeModal('modal-allocate')">✕</button>
+    </div>
+    <div class="form-group" style="margin-bottom:20px;">
+      <label>Select Department</label>
+      <select id="a-department"></select>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" onclick="submitAllocate()">Allocate</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-allocate')">Cancel</button>
+    </div>
+    <input type="hidden" id="a-emp-id"/>
+  </div>
+</div>
+
+<!-- Create Department -->
+<div class="modal-overlay" id="modal-dept">
+  <div class="modal" style="width:420px;">
+    <div class="modal-header">
+      <span class="modal-title">New Department</span>
+      <button class="close-btn" onclick="closeModal('modal-dept')">✕</button>
+    </div>
+    <form onsubmit="submitDept(event)">
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>Department Name *</label>
+        <input id="d-name" type="text" required placeholder="Engineering"/>
+      </div>
+      <div class="form-group" style="margin-bottom:20px;">
+        <label>Department Code *</label>
+        <input id="d-code" type="text" required placeholder="ENG" maxlength="10"/>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Create</button>
+        <button class="btn btn-ghost" type="button" onclick="closeModal('modal-dept')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script>
+  const API = 'http://localhost:8081';
+  let allEmployees = [];
+  let allDepts = [];
+
+  // ── Navigation ──────────────────────────────────
+  function showPage(name) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+    document.getElementById('page-' + name).classList.add('active');
+    document.getElementById('nav-' + name).classList.add('active');
+
+    if (name === 'dashboard')   loadDashboard();
+    if (name === 'employees')   loadEmployees();
+    if (name === 'departments') loadDepartments();
+    if (name === 'register')    loadDeptsIntoSelect('r-department');
+  }
+
+  // ── API helpers ──────────────────────────────────
+  async function apiFetch(path, opts = {}) {
+    const res = await fetch(API + path, {
+      headers: { 'Content-Type': 'application/json' },
+      ...opts
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: res.statusText }));
+      throw new Error(err.message || 'Request failed');
+    }
+    return res.status === 204 ? null : res.json();
+  }
+
+  // ── Toast ────────────────────────────────────────
+  function toast(msg, type = 'success') {
+    const el = document.createElement('div');
+    el.className = `toast toast-${type}`;
+    el.innerHTML = (type === 'success' ? '✅' : '❌') + ' ' + msg;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  }
+
+  // ── Modals ───────────────────────────────────────
+  function openModal(id)  { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  // ── Badge helper ─────────────────────────────────
+  function badge(status) {
+    const cls = {
+      ACTIVE: 'badge-active', INACTIVE: 'badge-inactive', TERMINATED: 'badge-terminated'
+    }[status] || 'badge-inactive';
+    return `<span class="badge ${cls}">${status}</span>`;
+  }
+
+  // ── Dashboard ────────────────────────────────────
+  async function loadDashboard() {
+    try {
+      const [emps, depts] = await Promise.all([
+        apiFetch('/api/employees'),
+        apiFetch('/api/departments')
+      ]);
+      document.getElementById('stat-total').textContent      = emps.length;
+      document.getElementById('stat-active').textContent     = emps.filter(e => e.status === 'ACTIVE').length;
+      document.getElementById('stat-terminated').textContent = emps.filter(e => e.status === 'TERMINATED').length;
+      document.getElementById('stat-depts').textContent      = depts.length;
+
+      const recent = emps.slice(-5).reverse();
+      document.getElementById('dashboard-table').innerHTML = recent.length
+        ? recent.map(e => `
+          <tr>
+            <td><b>${e.firstName} ${e.lastName}</b></td>
+            <td>${e.jobTitle}</td>
+            <td>${e.email}</td>
+            <td>${e.departmentName || '—'}</td>
+            <td>${badge(e.status)}</td>
+          </tr>`).join('')
+        : `<tr><td colspan="5"><div class="empty-state"><div class="icon">🌟</div><p>No employees yet. Register one!</p></div></td></tr>`;
+    } catch (err) {
+      document.getElementById('dashboard-table').innerHTML =
+        `<tr><td colspan="5"><div class="empty-state"><div class="icon">⚠️</div><p>${err.message}</p></div></td></tr>`;
+    }
+  }
+
+  // ── Employees ────────────────────────────────────
+  async function loadEmployees() {
+    try {
+      allEmployees = await apiFetch('/api/employees');
+      renderEmployees(allEmployees);
+    } catch (err) {
+      document.getElementById('employees-table').innerHTML =
+        `<tr><td colspan="8"><div class="empty-state"><div class="icon">⚠️</div><p>${err.message}</p></div></td></tr>`;
+    }
+  }
+
+  function renderEmployees(list) {
+    const tb = document.getElementById('employees-table');
+    if (!list.length) {
+      tb.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">👤</div><p>No employees found.</p></div></td></tr>`;
+      return;
+    }
+    tb.innerHTML = list.map(e => `
+      <tr>
+        <td><span style="color:var(--muted);font-size:12px;">#${e.id}</span></td>
+        <td><b>${e.firstName} ${e.lastName}</b></td>
+        <td>${e.email}</td>
+        <td>${e.jobTitle}</td>
+        <td>$${Number(e.salary).toLocaleString()}</td>
+        <td>${e.departmentName || '<span style="color:var(--muted)">Unassigned</span>'}</td>
+        <td>${badge(e.status)}</td>
+        <td>
+          <div class="action-btns">
+            <button class="btn btn-sm btn-ghost" onclick="openEditModal(${e.id})">✏️ Edit</button>
+            <button class="btn btn-sm btn-ghost" onclick="openAllocateModal(${e.id})">🏢</button>
+            <button class="btn btn-sm btn-danger" onclick="terminateEmployee(${e.id}, '${e.firstName}')">🚫</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+
+  function filterEmployees() {
+    const q = document.getElementById('emp-search').value.toLowerCase();
+    const s = document.getElementById('emp-status-filter').value;
+    renderEmployees(allEmployees.filter(e => {
+      const matchQ = (e.firstName + ' ' + e.lastName + ' ' + e.email).toLowerCase().includes(q);
+      const matchS = !s || e.status === s;
+      return matchQ && matchS;
+    }));
+  }
+
+  // ── Departments ──────────────────────────────────
+  async function loadDepartments() {
+    try {
+      allDepts = await apiFetch('/api/departments');
+      renderDepts(allDepts);
+    } catch (err) {
+      document.getElementById('departments-table').innerHTML =
+        `<tr><td colspan="4"><div class="empty-state"><div class="icon">⚠️</div><p>${err.message}</p></div></td></tr>`;
+    }
+  }
+
+  function renderDepts(list) {
+    const tb = document.getElementById('departments-table');
+    if (!list.length) {
+      tb.innerHTML = `<tr><td colspan="4"><div class="empty-state"><div class="icon">🏢</div><p>No departments yet.</p></div></td></tr>`;
+      return;
+    }
+    tb.innerHTML = list.map(d => `
+      <tr>
+        <td><span style="color:var(--muted);font-size:12px;">#${d.id}</span></td>
+        <td><b>${d.name}</b></td>
+        <td><code style="background:rgba(108,99,255,.15);color:var(--accent);padding:2px 8px;border-radius:5px;">${d.code}</code></td>
+        <td>${d.employeeCount} employee${d.employeeCount !== 1 ? 's' : ''}</td>
+      </tr>`).join('');
+  }
+
+  function filterDepts() {
+    const q = document.getElementById('dept-search').value.toLowerCase();
+    renderDepts(allDepts.filter(d =>
+      d.name.toLowerCase().includes(q) || d.code.toLowerCase().includes(q)
+    ));
+  }
+
+  // ── Register Employee ─────────────────────────────
+  async function registerEmployee(e) {
+    e.preventDefault();
+    const deptId = document.getElementById('r-department').value;
+    const body = {
+      firstName:   document.getElementById('r-firstName').value,
+      lastName:    document.getElementById('r-lastName').value,
+      email:       document.getElementById('r-email').value,
+      phoneNumber: document.getElementById('r-phone').value || null,
+      hireDate:    document.getElementById('r-hireDate').value,
+      jobTitle:    document.getElementById('r-jobTitle').value,
+      salary:      parseFloat(document.getElementById('r-salary').value)
+    };
+    try {
+      const emp = await apiFetch('/api/employees', { method: 'POST', body: JSON.stringify(body) });
+      if (deptId) {
+        await apiFetch(`/api/employees/${emp.id}/department/${deptId}`, { method: 'PUT' });
+      }
+      toast(`${emp.firstName} ${emp.lastName} registered successfully!`);
+      document.getElementById('register-form').reset();
+      showPage('employees');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+
+  // ── Edit Employee ─────────────────────────────────
+  async function openEditModal(id) {
+    await loadDeptsIntoSelect('e-department');
+    const emp = allEmployees.find(e => e.id === id);
+    if (!emp) return;
+    document.getElementById('e-id').value        = id;
+    document.getElementById('e-firstName').value = emp.firstName;
+    document.getElementById('e-lastName').value  = emp.lastName;
+    document.getElementById('e-email').value     = emp.email;
+    document.getElementById('e-phone').value     = emp.phoneNumber || '';
+    document.getElementById('e-hireDate').value  = emp.hireDate;
+    document.getElementById('e-jobTitle').value  = emp.jobTitle;
+    document.getElementById('e-salary').value    = emp.salary;
+    document.getElementById('e-status').value    = emp.status;
+    openModal('modal-edit');
+  }
+
+  async function submitEdit(e) {
+    e.preventDefault();
+    const id = document.getElementById('e-id').value;
+    const body = {
+      firstName:   document.getElementById('e-firstName').value,
+      lastName:    document.getElementById('e-lastName').value,
+      email:       document.getElementById('e-email').value,
+      phoneNumber: document.getElementById('e-phone').value || null,
+      hireDate:    document.getElementById('e-hireDate').value,
+      jobTitle:    document.getElementById('e-jobTitle').value,
+      salary:      parseFloat(document.getElementById('e-salary').value)
+    };
+    try {
+      await apiFetch(`/api/employees/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+      const deptId = document.getElementById('e-department').value;
+      if (deptId) await apiFetch(`/api/employees/${id}/department/${deptId}`, { method: 'PUT' });
+      toast('Employee updated successfully!');
+      closeModal('modal-edit');
+      loadEmployees();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+
+  // ── Terminate Employee ────────────────────────────
+  async function terminateEmployee(id, name) {
+    if (!confirm(`Terminate ${name}? This will mark them as TERMINATED.`)) return;
+    try {
+      await apiFetch(`/api/employees/${id}`, { method: 'DELETE' });
+      toast(`${name} has been terminated.`);
+      loadEmployees();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+
+  // ── Allocate Department ───────────────────────────
+  async function openAllocateModal(id) {
+    await loadDeptsIntoSelect('a-department');
+    document.getElementById('a-emp-id').value = id;
+    openModal('modal-allocate');
+  }
+
+  async function submitAllocate() {
+    const empId  = document.getElementById('a-emp-id').value;
+    const deptId = document.getElementById('a-department').value;
+    if (!deptId) { toast('Please select a department', 'error'); return; }
+    try {
+      await apiFetch(`/api/employees/${empId}/department/${deptId}`, { method: 'PUT' });
+      toast('Department allocated successfully!');
+      closeModal('modal-allocate');
+      loadEmployees();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+
+  // ── Create Department ─────────────────────────────
+  function openCreateDeptModal() { openModal('modal-dept'); }
+
+  async function submitDept(e) {
+    e.preventDefault();
+    const body = {
+      name: document.getElementById('d-name').value,
+      code: document.getElementById('d-code').value.toUpperCase()
+    };
+    try {
+      await apiFetch('/api/departments', { method: 'POST', body: JSON.stringify(body) });
+      toast(`Department "${body.name}" created!`);
+      closeModal('modal-dept');
+      document.getElementById('d-name').value = '';
+      document.getElementById('d-code').value = '';
+      loadDepartments();
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+
+  // ── Load Depts into <select> ──────────────────────
+  async function loadDeptsIntoSelect(selectId) {
+    try {
+      const depts = await apiFetch('/api/departments');
+      const sel = document.getElementById(selectId);
+      sel.innerHTML = '<option value="">— None —</option>' +
+        depts.map(d => `<option value="${d.id}">${d.name} (${d.code})</option>`).join('');
+    } catch (_) {}
+  }
+
+  // ── Init ──────────────────────────────────────────
+  loadDashboard();
+</script>
+</body>
+</html>
