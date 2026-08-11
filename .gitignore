@@ -1,0 +1,12 @@
+target/
+.settings/
+.project
+.classpath
+.factorypath
+.idea/
+*.class
+*.log
+*.zip
+*.tar.gz
+*.rar
+bin/
